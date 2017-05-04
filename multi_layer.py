@@ -9,14 +9,22 @@ def nonlin(x, deriv=False):
     return 1 / (1 + np.exp(-x))
 
 def func(node_num, X, y, syn):
-    l = []
+    l = [[] for _ in range(len(node_num))]
     # l0 is the X
     l[0] = X
     # calculate the value on layer1 & y, with non-linear(sigmoid) function
     for i in range(0,len(node_num)-1):
         l[i+1] = nonlin(np.dot(l[i], syn[i]))
 
-    error = delta = []
+    softmax = [0 for _ in range(node_num[-1])]
+    for i in range(0, len(l[-1])):
+        z = -np.log(1/l[-1][i]-1)
+        softmax[i] = z
+    sum_sft = sum(softmax)
+    for i in range(0, len(l[-1])):
+        softmax[i] = softmax[i] / sum_sft
+
+    error = delta = [0 for _ in range(len(node_num))]
     for i in xrange(len(node_num)-1,0,-1):
         if i == len(node_num)-1:
             error[i] = y - l[i]
@@ -24,12 +32,12 @@ def func(node_num, X, y, syn):
             error[i] = delta[i+1].dot(syn[i].T)
         delta[i] = error[i] * nonlin(l[i], deriv=True)
 
-    temp = []
+    ret = []
     for i in range(0,len(node_num)-1):
-        temp.append(l[i].T.dot(delta[i+1]))
-    temp.append(error[len(node_num-1)])
+        ret.append(l[i].T.dot(delta[i+1]))
+    ret.append(error[-1])
 
-    return temp
+    return ret
 
 np.random.seed(1)
 
@@ -81,7 +89,7 @@ node_num = [3,4,4,4,6]
 
 syn = []
 for i in range(0,len(node_num)-1):
-    syn[i] = 2 * np.random.random((node_num[i], node_num[i+1])) - 1
+    syn.append(2 * np.random.random((node_num[i], node_num[i+1])) - 1)
 
 for loop in range(1,num_of_train):
     print "train loop = ", loop
@@ -89,7 +97,7 @@ for loop in range(1,num_of_train):
                                            np.expand_dims(data[0],axis=0),\
                                            np.expand_dims(data[1],axis=0),\
                                            syn))
-    delta = []
+    delta = [0 for _ in range(len(node_num))]
     for i in range(0,len(node_num)-1):
         delta[i] = rdd.map(lambda x: x[i]).mean()
     error = rdd.map(lambda x: x[-1]).mean()
