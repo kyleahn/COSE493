@@ -24,15 +24,6 @@ def train(node_num, X, y, syn):
     for i in range(0, node_num[-1]):
         softmax[i] = softmax[i] / sum_sft
 
-    #max of the softmax ==  max of answer
-    for i in range(0,node_num[-1]):
-        if softmax[i] == max(softmax):
-            if y[0][i] == max(y[0]):
-                print "succeed"
-            else:
-                print "failed"
-            break
-
     error = delta = [0 for _ in range(len(node_num))]
     for i in xrange(len(node_num)-1,0,-1):
         if i == len(node_num)-1:
@@ -48,6 +39,24 @@ def train(node_num, X, y, syn):
 
     return ret
 
+def classify(node_num, X, syn):
+    l = [[] for _ in range(len(node_num))]
+    l[0] = X
+    for i in range(0,len(node_num)-1):
+        l[i+1] = nonlin(np.dot(l[i], syn[i]))
+
+    softmax = [0 for _ in range(node_num[-1])]
+    for i in range(0, node_num[-1]):
+        z = -np.log(1/l[-1][0][i]-1)
+        softmax[i] = z
+    sum_sft = sum(softmax)
+    for i in range(0, node_num[-1]):
+        softmax[i] = softmax[i] / sum_sft
+
+    for i in range(0,node_num[-1]):
+        if softmax[i] == max(softmax):
+            return i
+
 np.random.seed(1)
 
 #init spark
@@ -60,9 +69,9 @@ sc = SparkContext(conf=conf)
 #load from file
 path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
 
-num_of_train = 10
-
-x = y = z = []
+x = []
+y = []
+z = []
 result = []
 exercise = {
   "Walking" : 0,
@@ -90,18 +99,20 @@ with open(path, 'r') as file :
 
 X = zip(x,y,z)
 Y = result
-train_data = sc.parallelize(zip(zip(x,y,z), Y), 1)
+train_data = sc.parallelize(zip(zip(x,y,z), Y))
 
 #first = 3, last = 6
-node_num = [3,4,4,4,6]
+node_num = [3,80,80,80,80,80,6]
 
 syn = []
 for i in range(0,len(node_num)-1):
     syn.append(np.random.random((node_num[i], node_num[i+1])))
 
+num_of_train = 100
+
 print "Start training >>"
-for loop in range(1,num_of_train):
-    print "train loop = ", loop
+for loop in range(0,num_of_train):
+    print "train loop = ", loop+1
     rdd = train_data.map(lambda data: train(node_num,\
                                            np.expand_dims(data[0],axis=0),\
                                            np.expand_dims(data[1],axis=0),\
@@ -115,3 +126,15 @@ for loop in range(1,num_of_train):
         syn[i] += delta[i]
     
     print error
+
+num_of_test = 1000
+succeed = 0
+print "Start testing >>"
+for loop in range(0,num_of_test):
+    print "test loop = ", loop+1
+    idx = np.random.randint(len(X))
+    if Y[idx][classify(node_num, np.expand_dims(X[idx],axis=0), syn)] == 1.0:
+        succeed = succeed + 1
+print "correct : ",succeed
+print "wrong : ", (num_of_test - succeed)
+print "accurancy : ", succeed*100.0/num_of_test,"%"
