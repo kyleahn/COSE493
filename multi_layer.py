@@ -58,24 +58,20 @@ conf = (SparkConf()
 sc = SparkContext(conf=conf)
 
 #load from file
-path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_at_v2.0_raw.txt'
-
-#preprocess file
-with open(path, 'r') as file :
-    filedata = file.read()
-filedata = filedata.replace("Walking", "0")
-filedata = filedata.replace("Jogging", "1")
-filedata = filedata.replace("Upstairs", "2")
-filedata = filedata.replace("Downstairs", "3")
-filedata = filedata.replace("Sitting", "4")
-filedata = filedata.replace("Standing", "5")
-with open(path, 'w') as file :
-    file.write(filedata)
+path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
 
 num_of_train = 10
 
 x = y = z = []
 result = []
+exercise = {
+  "Walking" : 0,
+  "Jogging" : 1,
+  "Upstairs" : 2,
+  "Downstairs" : 3,
+  "Sitting" : 4,
+  "Standing" : 5
+}
 with open(path, 'r') as file :
     while True:
         line = file.readline()
@@ -87,8 +83,9 @@ with open(path, 'r') as file :
             x.append(float(line.split(",")[3]))
             y.append(float(line.split(",")[4]))
             z.append(float(line.split(",")[5].replace(";","")))
+
             temp = [0.0 for _ in range(6)]
-            temp[int(line.split(",")[1])] = 1.0
+            temp[exercise.get(line.split(",")[1])] = 1.0
             result.append(temp)
 
 X = zip(x,y,z)
