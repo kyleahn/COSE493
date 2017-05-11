@@ -1,5 +1,6 @@
 import numpy as np
 import platform
+import random
 from pyspark import SparkConf, SparkContext
 
 #sigmoid function
@@ -68,7 +69,6 @@ conf = (SparkConf()
 sc = SparkContext(conf=conf)
 
 #load from file
-print platform.system()
 if platform.system() == 'Linux':
     path = '/home/master/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
 elif platform.system() == 'Windows':
@@ -109,13 +109,13 @@ Y = result
 train_data = sc.parallelize(zip(zip(x,y,z), Y))
 
 #first = 3, last = 6
-node_num = [3,80,6]
+node_num = [3,100,6]
+num_of_train = 100
 
 syn = []
 for i in range(0,len(node_num)-1):
     syn.append(np.random.random((node_num[i], node_num[i+1])))
 
-num_of_train = 100
 
 print "Start training >>"
 for loop in range(0,num_of_train):
@@ -134,11 +134,11 @@ for loop in range(0,num_of_train):
     
     print error
 
-num_of_test = 1000
+num_of_test = 10000
 succeed = 0
 print "Start testing >>"
 for loop in range(0,num_of_test):
-    print "test loop = ", loop+1
+    #print "test loop = ", loop+1
     idx = np.random.randint(len(X))
     if Y[idx][classify(node_num, np.expand_dims(X[idx],axis=0), syn)] == 1.0:
         succeed = succeed + 1
