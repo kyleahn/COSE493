@@ -19,7 +19,7 @@ def train(node_num, X, y, syn):
 
     softmax = [0 for _ in range(node_num[-1])]
     for i in range(0, node_num[-1]):
-        z = -np.log(1/l[-1][0][i]-1)
+        z = pow(np.e, l[-1][0][i])
         softmax[i] = z
     sum_sft = sum(softmax)
     for i in range(0, node_num[-1]):
@@ -68,7 +68,10 @@ conf = (SparkConf()
 sc = SparkContext(conf=conf)
 
 #load from file
-if platform.system() == 'Windows':
+print platform.system()
+if platform.system() == 'Linux':
+    path = '/home/master/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
+elif platform.system() == 'Windows':
     path = 'C:\Users\KUsch\Downloads\WISDM_ar_v1.1\WISDM_ar_v1.1_raw.txt'
 else:
     path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
@@ -106,7 +109,7 @@ Y = result
 train_data = sc.parallelize(zip(zip(x,y,z), Y))
 
 #first = 3, last = 6
-node_num = [3,80,80,80,6]
+node_num = [3,80,6]
 
 syn = []
 for i in range(0,len(node_num)-1):
