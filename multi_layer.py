@@ -77,7 +77,7 @@ else:
     path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
 
 csv = sc.textFile(path)
-data = csv.map(lambda line: (line.split(",")))
+data = csv.map(lambda line: (line.split(","))).filter(lambda line: len(line)==6)
 #replace exercise name to num
 def replace(line):
     exercise = {"Walking" : 0,"Jogging" : 1,"Upstairs" : 2,"Downstairs" : 3,"Sitting" : 4,"Standing" : 5}
@@ -88,44 +88,18 @@ data = data.map(lambda line: replace(line))
 def change(line):
     temp = [0.0 for _ in range(6)]
     temp[line[1]] = 1.0
-    return ((line[3],line[4],line[5]),temp)
-data = data.map(lambda line: change(line))
-'''
-x = []
-y = []
-z = []
-result = []
-with open(path, 'r') as file :
-    while True:
-        line = file.readline()
-        if not line: break
-        if len(line.split(","))>=6 \
-                and len(line.split(",")[3])>0 \
-                and len(line.split(",")[4])>0 \
-                and len(line.split(",")[5])>1:
-            x.append(float(line.split(",")[3]))
-            y.append(float(line.split(",")[4]))
-            z.append(float(line.split(",")[5].replace(";","")))
-
-            temp = [0.0 for _ in range(6)]
-            temp[exercise.get(line.split(",")[1])] = 1.0
-            result.append(temp)
-
-X = zip(x,y,z)
-Y = result
-train_data = sc.parallelize(zip(zip(x,y,z), Y))'''
-train_data = data
+    return ((float(line[3]),float(line[4]),float(line[5])),temp)
+train_data = data.map(lambda line: change(line))
 
 #first = 3, last = 6
-node_num = [3,100,6]
-num_of_train = 100
+node_num = [3,20,6]
+num_of_train = 20
 
 syn = []
 for i in range(0,len(node_num)-1):
     syn.append(np.random.random((node_num[i], node_num[i+1])))
 
-
-'''print "Start training >>"
+print "Start training >>"
 for loop in range(0,num_of_train):
     print "train loop = ", loop+1
     rdd = train_data.map(lambda data: train(node_num,\
@@ -146,10 +120,9 @@ num_of_test = 10000
 succeed = 0
 print "Start testing >>"
 for loop in range(0,num_of_test):
-    #print "test loop = ", loop+1
-    idx = np.random.randint(len(X))
-    if Y[idx][classify(node_num, np.expand_dims(X[idx],axis=0), syn)] == 1.0:
+    test_data = train_data.takeSample(false,1)
+    if test_data[1][classify(node_num, np.expand_dims(X[idx],axis=0), syn)] == 1.0:
         succeed = succeed + 1
 print "correct : ",succeed
 print "wrong : ", (num_of_test - succeed)
-print "accurancy : ", succeed*100.0/num_of_test,"%"'''
+print "accurancy : ", succeed*100.0/num_of_test,"%"
