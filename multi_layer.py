@@ -48,7 +48,7 @@ def classify(node_num, X, syn):
 
     softmax = [0 for _ in range(node_num[-1])]
     for i in range(0, node_num[-1]):
-        z = -np.log(1/l[-1][0][i]-1)
+        z = pow(np.e, l[-1][0][i])
         softmax[i] = z
     sum_sft = sum(softmax)
     for i in range(0, node_num[-1]):
@@ -63,8 +63,8 @@ np.random.seed(1)
 #init spark
 conf = (SparkConf()
         .setAppName("SPARK_ANN")
-#        .setMaster("spark://192.168.0.3:7077"))
-        .setMaster("local[*]"))
+        .setMaster("spark://192.168.0.3:7077"))
+#        .setMaster("local[*]"))
 sc = SparkContext(conf=conf)
 
 #load from file
