@@ -1,4 +1,5 @@
 import numpy as np
+import platform
 from pyspark import SparkConf, SparkContext
 
 #sigmoid function
@@ -67,7 +68,10 @@ conf = (SparkConf()
 sc = SparkContext(conf=conf)
 
 #load from file
-path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
+if platform.system() == 'Windows':
+    path = 'C:\Users\KUsch\Downloads\WISDM_ar_v1.1\WISDM_ar_v1.1_raw.txt'
+else:
+    path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
 
 x = []
 y = []
@@ -102,7 +106,7 @@ Y = result
 train_data = sc.parallelize(zip(zip(x,y,z), Y))
 
 #first = 3, last = 6
-node_num = [3,80,80,80,80,80,6]
+node_num = [3,80,80,80,6]
 
 syn = []
 for i in range(0,len(node_num)-1):
