@@ -76,18 +76,25 @@ elif platform.system() == 'Windows':
 else:
     path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
 
+csv = sc.textFile(path)
+data = csv.map(lambda line: (line.split(",")))
+#replace exercise name to num
+def replace(line):
+    exercise = {"Walking" : 0,"Jogging" : 1,"Upstairs" : 2,"Downstairs" : 3,"Sitting" : 4,"Standing" : 5}
+    line[1] = exercise[line[1]]
+    return line
+data = data.map(lambda line: replace(line))
+#form change to (X,Y,Z), result
+def change(line):
+    temp = [0.0 for _ in range(6)]
+    temp[line[1]] = 1.0
+    return ((line[3],line[4],line[5]),temp)
+data = data.map(lambda line: change(line))
+'''
 x = []
 y = []
 z = []
 result = []
-exercise = {
-  "Walking" : 0,
-  "Jogging" : 1,
-  "Upstairs" : 2,
-  "Downstairs" : 3,
-  "Sitting" : 4,
-  "Standing" : 5
-}
 with open(path, 'r') as file :
     while True:
         line = file.readline()
@@ -106,7 +113,8 @@ with open(path, 'r') as file :
 
 X = zip(x,y,z)
 Y = result
-train_data = sc.parallelize(zip(zip(x,y,z), Y))
+train_data = sc.parallelize(zip(zip(x,y,z), Y))'''
+train_data = data
 
 #first = 3, last = 6
 node_num = [3,100,6]
@@ -117,7 +125,7 @@ for i in range(0,len(node_num)-1):
     syn.append(np.random.random((node_num[i], node_num[i+1])))
 
 
-print "Start training >>"
+'''print "Start training >>"
 for loop in range(0,num_of_train):
     print "train loop = ", loop+1
     rdd = train_data.map(lambda data: train(node_num,\
@@ -144,4 +152,4 @@ for loop in range(0,num_of_test):
         succeed = succeed + 1
 print "correct : ",succeed
 print "wrong : ", (num_of_test - succeed)
-print "accurancy : ", succeed*100.0/num_of_test,"%"
+print "accurancy : ", succeed*100.0/num_of_test,"%"'''
