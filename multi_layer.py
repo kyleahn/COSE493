@@ -97,16 +97,20 @@ train_data = train_data.repartition(24)
 
 #first = 3, last = 6
 node_num = [3,100,6]
-num_of_train = 100
+num_of_train = 10
+batch_size = 100
 
 syn = []
 for i in range(0,len(node_num)-1):
     syn.append(np.random.random((node_num[i], node_num[i+1])))
 
+train_data = train_data.zipWithIndex()
+
 print "Start training >>"
 for loop in range(0,num_of_train):
     print "train loop = ", loop+1
-    rdd = train_data.map(lambda data: train(node_num,\
+    train_batch = train_data.filter(lambda (data,index): index%batch_size == loop%batch_size)
+    rdd = train_batch.map(lambda (data,index): train(node_num,\
                                            np.expand_dims(data[0],axis=0),\
                                            np.expand_dims(data[1],axis=0),\
                                            syn))
@@ -127,7 +131,7 @@ print "Start testing >>"
 test_data_array = train_data.takeSample(False, num_of_test)
 
 for loop in range(0,num_of_test):
-    test_data = test_data_array[loop]
+    test_data = test_data_array[loop][0]
     predict = classify(node_num, np.expand_dims(test_data[0],axis=0), syn)
     if test_data[1][predict] == 1.0:
         succeed = succeed + 1
