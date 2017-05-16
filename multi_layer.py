@@ -70,18 +70,21 @@ sc = SparkContext(conf=conf)
 
 #load from file
 if platform.system() == 'Linux':
-    path = '/home/master/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
+    path = '/home/master/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw.txt'
 elif platform.system() == 'Windows':
-    path = 'C:\Users\KUsch\Downloads\WISDM_ar_v1.1\WISDM_ar_v1.1_raw.txt'
+    path = 'C:\Users\KUsch\Downloads\WISDM_at_v2.0\WISDM_at_v2.0_raw.txt'
 else:
-    path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt'
+    path = '/Users/Abj/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw.txt'
 
 csv = sc.textFile(path)
-data = csv.map(lambda line: (line.split(","))).filter(lambda line: len(line)==6)
+data = csv.filter(lambda line: line[-1]==';')\
+    .map(lambda line: (line.split(",")))\
+    .filter(lambda line: len(line)==6)
 #replace exercise name to num
 def replace(line):
-    exercise = {"Walking" : 0,"Jogging" : 1,"Upstairs" : 2,"Downstairs" : 3,"Sitting" : 4,"Standing" : 5}
+    exercise = {"Walking" : 0,"Jogging" : 1,"Stairs" : 2,"Sitting" : 3,"Standing" : 4,"LyingDown" : 5}
     line[1] = exercise[line[1]]
+    line[5] = line[5].replace(";","")
     return line
 data = data.map(lambda line: replace(line))
 #form change to (X,Y,Z), result
@@ -90,6 +93,7 @@ def change(line):
     temp[line[1]] = 1.0
     return ((float(line[3]),float(line[4]),float(line[5])),temp)
 train_data = data.map(lambda line: change(line))
+train_data = train_data.repartition(24)
 
 #first = 3, last = 6
 node_num = [3,20,6]
@@ -120,8 +124,8 @@ num_of_test = 10000
 succeed = 0
 print "Start testing >>"
 for loop in range(0,num_of_test):
-    test_data = train_data.takeSample(false,1)
-    if test_data[1][classify(node_num, np.expand_dims(X[idx],axis=0), syn)] == 1.0:
+    test_data = train_data.takeSample(False,1)
+    if test_data[1][classify(node_num, np.expand_dims(test_data[0],axis=0), syn)] == 1.0:
         succeed = succeed + 1
 print "correct : ",succeed
 print "wrong : ", (num_of_test - succeed)
