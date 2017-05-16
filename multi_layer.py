@@ -1,6 +1,6 @@
 import numpy as np
 import platform
-import random
+import time
 from pyspark import SparkConf, SparkContext
 
 #sigmoid function
@@ -96,8 +96,8 @@ train_data = data.map(lambda line: change(line))
 train_data = train_data.repartition(24)
 
 #first = 3, last = 6
-node_num = [3,20,6]
-num_of_train = 20
+node_num = [3,100,6]
+num_of_train = 100
 
 syn = []
 for i in range(0,len(node_num)-1):
@@ -122,11 +122,16 @@ for loop in range(0,num_of_train):
 
 num_of_test = 10000
 succeed = 0
+
 print "Start testing >>"
+test_data_array = train_data.takeSample(False, num_of_test)
+
 for loop in range(0,num_of_test):
-    test_data = train_data.takeSample(False,1)
-    if test_data[1][classify(node_num, np.expand_dims(test_data[0],axis=0), syn)] == 1.0:
+    test_data = test_data_array[loop]
+    predict = classify(node_num, np.expand_dims(test_data[0],axis=0), syn)
+    if test_data[1][predict] == 1.0:
         succeed = succeed + 1
+
 print "correct : ",succeed
 print "wrong : ", (num_of_test - succeed)
 print "accurancy : ", succeed*100.0/num_of_test,"%"
