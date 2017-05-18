@@ -107,6 +107,12 @@ for i in range(0,len(node_num)-1):
 
 train_data = train_data.zipWithIndex()
 
+#split test and train data
+test_ratio = 10
+rdd_size = train_data.count()
+test_data = train_data.filter(lambda (data,index): index>rdd_size*(100-test_ratio)/100)
+train_data = train_data.filter(lambda (data,index): index<=rdd_size*(100-test_ratio)/100)
+
 print "Start training >>"
 print "node_num = "+str(node_num)+", num_of_train = "+str(num_of_train)+", batch_size = "+str(batch_size)
 for loop in range(0,num_of_train):
@@ -126,17 +132,11 @@ for loop in range(0,num_of_train):
     
     print error
 
-num_of_test = 10000
-succeed = 0
+num_of_test = test_data.count()
 
 print "Start testing >>"
-test_data_array = train_data.takeSample(False, num_of_test)
-
-for loop in range(0,num_of_test):
-    test_data = test_data_array[loop][0]
-    predict = classify(node_num, np.expand_dims(test_data[0],axis=0), syn)
-    if test_data[1][predict] == 1.0:
-        succeed = succeed + 1
+test_result = test_data.filter(lambda (data, index): test_data[1][classify(node_num, np.expand_dims(data[0],axis=0), syn)] == 1.0)
+succeed = test_result.count()
 
 print "correct : ",succeed
 print "wrong : ", (num_of_test - succeed)
