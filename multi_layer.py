@@ -76,7 +76,7 @@ elif platform.system() == 'Windows':
 else:
     path = '/Users/Abj/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw.txt'
 
-csv = sc.textFile(path)
+csv = sc.textFile(path,24)
 data = csv.filter(lambda line: line[-1]==';')\
     .map(lambda line: (line.split(",")))\
     .filter(lambda line: len(line)==6)
@@ -93,11 +93,12 @@ def change(line):
     temp[line[1]] = 1.0
     return ((float(line[3]),float(line[4]),float(line[5])),temp)
 train_data = data.map(lambda line: change(line))
+#shuffle rdd
 train_data = train_data.repartition(24)
 
 #first = 3, last = 6
-node_num = [3,100,6]
-num_of_train = 10
+node_num = [3,1000,6]
+num_of_train = 100
 batch_size = 100
 
 syn = []
@@ -107,6 +108,7 @@ for i in range(0,len(node_num)-1):
 train_data = train_data.zipWithIndex()
 
 print "Start training >>"
+print "node_num = "+str(node_num)+", num_of_train = "+str(num_of_train)+", batch_size = "+str(batch_size)
 for loop in range(0,num_of_train):
     print "train loop = ", loop+1
     train_batch = train_data.filter(lambda (data,index): index%batch_size == loop%batch_size)
