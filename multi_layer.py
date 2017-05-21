@@ -127,8 +127,10 @@ for loop in range(0,num_of_train):
         delta[i] = rdd.map(lambda x: x[i]).mean()
     error = rdd.map(lambda x: x[-1]).mean()
 
+    #alpha if learning rate
+    alpha = 0.1
     for i in range(0,len(node_num)-1):
-        syn[i] += delta[i]
+        syn[i] -= alpha * delta[i]
     
     print error
 
