@@ -26,20 +26,19 @@ def train(node_num, X, y, syn):
     for i in range(0, node_num[-1]):
         softmax[i] = softmax[i] / sum_sft
 
-    error = delta = [0 for _ in range(len(node_num))]
-    for i in xrange(len(node_num)-1,0,-1):
+    error = [0 for _ in range(len(node_num))]
+    for i in xrange(len(node_num)-1,-1,-1):
         if i == len(node_num)-1:
             error[i] = y - softmax
         else:
-            error[i] = delta[i+1].dot(syn[i].T)
-        delta[i] = error[i] * nonlin(l[i], deriv=True)
+            error[i] = error[i+1].dot(syn[i].T) * nonlin(l[i], deriv=True)
 
-    ret = []
+    gradient = []
     for i in range(0,len(node_num)-1):
-        ret.append(l[i].T.dot(delta[i+1]))
-    ret.append(error[-1])
+        gradient.append(l[i].T.dot(error[i+1]))
+    gradient.append(error[-1])
 
-    return ret
+    return gradient
 
 def classify(node_num, X, syn):
     def nonlin(x, deriv=False):
@@ -64,7 +63,7 @@ def classify(node_num, X, syn):
         if softmax[i] == max(softmax):
             return i
 
-def __init__(self):
+if __name__ == "__main__":
     np.random.seed(1)
 
     #init spark
@@ -136,7 +135,7 @@ def __init__(self):
         #alpha if learning rate
         alpha = 0.1
         for i in range(0,len(node_num)-1):
-            syn[i] -= alpha * delta[i]
+            syn[i] += alpha * delta[i]
 
         print error
 
