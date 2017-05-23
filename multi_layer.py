@@ -50,6 +50,8 @@ def classify(node_num, X, syn):
     l[0] = X
     for i in range(0,len(node_num)-1):
         l[i+1] = nonlin(np.dot(l[i], syn[i]))
+#        print "l[",i,"] = ",l[i]
+#        print "syn[",i,"] = ",syn[i]
 
     softmax = [0 for _ in range(node_num[-1])]
     for i in range(0, node_num[-1]):
@@ -59,8 +61,10 @@ def classify(node_num, X, syn):
     for i in range(0, node_num[-1]):
         softmax[i] = softmax[i] / sum_sft
 
+    print X, softmax
     for i in range(0,node_num[-1]):
         if softmax[i] == max(softmax):
+#            print i
             return i
 
 if __name__ == "__main__":
@@ -81,6 +85,7 @@ if __name__ == "__main__":
     else:
         path = '/Users/Abj/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw.txt'
 
+    print "<<Preprocessing>>"
     csv = sc.textFile(path,24)
     data = csv.filter(lambda line: line[-1]==';')\
         .map(lambda line: (line.split(",")))\
@@ -101,22 +106,40 @@ if __name__ == "__main__":
     #shuffle rdd
     train_data = train_data.repartition(24)
 
+    #50,000 row in each exercise
+    print "modifying rdd with 50,000 row in each exercise"
+    temp_train_data = sc.parallelize([])
+    for i in range(0,6):
+        temp_rdd = train_data.filter(lambda data: data[1][i] == 1.0)
+        temp_rdd = temp_rdd.zipWithIndex()
+        temp_rdd = temp_rdd.filter(lambda (data, index) : index<50000)
+        temp_rdd = temp_rdd.map(lambda (data, index) : data)
+        temp_train_data = temp_train_data.union(temp_rdd)
+
+    train_data = temp_train_data
+    print train_data.count()
+    print train_data.first()
+
     #first = 3, last = 6
     node_num = [3,500,500,500,500,500,6]
-    num_of_train = 50
+    num_of_train = 3
     batch_size = 3000
 
     syn = []
     for i in range(0,len(node_num)-1):
-        syn.append(np.random.random((node_num[i], node_num[i+1])))
+        # rand in -0.1 ~ +0.1
+        syn.append(np.random.random((node_num[i], node_num[i+1]))*0.2-0.1)
 
     train_data = train_data.zipWithIndex()
 
     #split test and train data
-    test_ratio = 0.1
+    test_ratio = 1.0
     rdd_size = train_data.count()
     test_data = train_data.filter(lambda (data,index): index>rdd_size*(100-test_ratio)/100)
     train_data = train_data.filter(lambda (data,index): index<=rdd_size*(100-test_ratio)/100)
+
+#    for i in range(6):
+#        print i," count : ", train_data.filter(lambda (data,index): data[1][i] == 1.0).count()
 
     print "Start training >>"
     print "node_num = "+str(node_num)+", num_of_train = "+str(num_of_train)+", batch_size = "+str(batch_size)
@@ -133,9 +156,18 @@ if __name__ == "__main__":
         error = rdd.map(lambda x: x[-1]).mean()
 
         #alpha if learning rate
-        alpha = 0.1
+        alpha = 0.05
         for i in range(0,len(node_num)-1):
             syn[i] += alpha * delta[i]
+
+        #logging l value
+        #l = [[] for _ in range(len(node_num))]
+        # l0 is the X
+        #l[0] = [[10.0,10.0,10.0]]
+        # calculate the value on layer1 & y, with non-linear(sigmoid) function
+        #for i in range(0, len(node_num) - 1):
+#            l[i + 1] = nonlin(np.dot(l[i], syn[i]))
+#            print "l[",i+1,"] = ",l[i+1]
 
         print error
 
