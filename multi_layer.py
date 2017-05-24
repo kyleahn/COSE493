@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     #load from file
     if platform.system() == 'Linux':
-        path = '/home/master/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw.txt'
+        path = '/home/master/Downloads/WISDM_ar_v1.1/WISDM_spectrum_40_overlap_20_train.csv'
     elif platform.system() == 'Windows':
         path = 'C:\Users\KUsch\Downloads\WISDM_at_v2.0\WISDM_at_v2.0_raw.txt'
     else:
@@ -75,68 +75,22 @@ if __name__ == "__main__":
     print "<<Preprocessing>>"
     csv = sc.textFile(path,24)
     #filter weird data
-    data = csv.filter(lambda line: line[-1]==';')\
-        .map(lambda line: (line.split(",")))\
-        .filter(lambda line: len(line)==6)
-    #replace exercise name to num
-    def replace(line):
-        exercise = {"Walking" : 0,"Jogging" : 1,"Stairs" : 2,"Sitting" : 3,"Standing" : 4,"LyingDown" : 5}
-        line[1] = exercise[line[1]]
-        line[5] = line[5].replace(";","")
-        return line
-    data = data.map(lambda line: replace(line))
+    data = csv.map(lambda line: (line.split(",")))
     #form change to (X,Y,Z), result
     def change(line):
+        for i in range(63):
+            line[i] = float(line[i])
+        line[63] = int(round(float(line[63])))-1
         temp = [0.0 for _ in range(6)]
-        temp[line[1]] = 1.0
-        return ((float(line[3]),float(line[4]),float(line[5])),temp)
+        temp[line[63]] = 1.0
+        temp_list = [line[i] for i in range(63)]
+        return (tuple(temp_list), temp)
     train_data = data.map(lambda line: change(line))
 
-    #drop outlier
-    train_data = train_data.filter(lambda (data, index): -100<data[0]<100 and -100<data[1]<100 and -100<data[2]<100)
-
-    #50,000 row in each exercise
-    print "modifying rdd with 50,000 row in each exercise"
-    temp_train_data = sc.parallelize([])
-    for i in range(0,6):
-        temp_rdd = train_data.filter(lambda data: data[1][i] == 1.0)
-        temp_rdd = temp_rdd.zipWithIndex()
-        temp_count = temp_rdd.count()
-        temp_rdd = temp_rdd.filter(lambda (data, index) : index%(temp_count/50000) == 0)
-        temp_rdd = temp_rdd.map(lambda (data, index) : data)
-        temp_train_data = temp_train_data.union(temp_rdd)
-
-    train_data = temp_train_data
-    print train_data.first()
-    #shuffle rdd
-    train_data = train_data.repartition(24)
-    print train_data.first()
-
-
-    #normalization to 0~1
-    x_rdd = train_data.map(lambda (data, index): data[0])
-    x_max = x_rdd.max(); x_min = x_rdd.min()
-    y_rdd = train_data.map(lambda (data, index): data[1])
-    y_max = y_rdd.max(); y_min = y_rdd.min()
-    z_rdd = train_data.map(lambda (data, index): data[2])
-    z_max = z_rdd.max(); z_min = z_rdd.min()
-
-    print x_max, x_min
-    print y_max, y_min
-    print z_max, z_min
-
-    normalization_factor = 10000.0
-    print "normalization to +-",normalization_factor
-    train_data = train_data.map(lambda (data, index):
-                                (( (data[0]-x_min-(x_max-x_min)/2.0)/(x_max-x_min)*normalization_factor,
-                                   (data[1]-y_min-(y_max-y_min)/2.0)/(y_max-y_min)*normalization_factor,
-                                   (data[2]-z_min-(z_max-z_min)/2.0)/(z_max-z_min)*normalization_factor ), index) )
-
-
     #first = 3, last = 6
-    node_num = [3,500,500,6]
-    num_of_train = 10
-    batch_size = 1
+    node_num = [63,500,6]
+    num_of_train = 50
+    batch_size = 3000
 
     syn = []
     for i in range(0,len(node_num)-1):
@@ -149,31 +103,17 @@ if __name__ == "__main__":
 #    print train_data.collect()
 
     #split test and train data
-    test_ratio = 1.0
+    test_ratio = 10.0
     rdd_size = train_data.count()
 
     test_data = train_data.filter(lambda (data,index): index%int((100/test_ratio)) == 0)
     train_data = train_data.filter(lambda (data,index):  index%int((100/test_ratio)) != 0)
-
-   # print train_data.collect()
-
-    print "analyzing train_data..."
-    for i in range(6):
-        print i," count : ", train_data.filter(lambda (data,index): data[1][i] == 1.0).count()
-    print "analyzing test_data..."
-    for i in range(6):
-        print i," count : ", test_data.filter(lambda (data,index): data[1][i] == 1.0).count()
 
     print "Start training >>"
     print "node_num = "+str(node_num)+", num_of_train = "+str(num_of_train)+", batch_size = "+str(batch_size)
     for loop in range(0,num_of_train):
         print "train loop = ", loop+1
         train_batch = train_data.filter(lambda (data,index): index%batch_size == loop%batch_size)
-
-        print "["
-        for i in range(6):
-            print train_batch.map(lambda (data, index): data[1][i]).sum(), ","
-        print "]"
 
         rdd = train_batch.map(lambda (data,index): train(node_num,\
                                                np.expand_dims(data[0],axis=0),\
@@ -197,7 +137,6 @@ if __name__ == "__main__":
     print "num_of_test = "+str(num_of_test)
 
     test_data = test_data.map(lambda (data, index): (data[0], data[1], classify(node_num, np.expand_dims(data[0],axis=0), syn)))
-    print test_data.map(lambda data: (data[0], data[1], data[2])).collect()
 
     test_result = test_data.filter(lambda data: data[1][data[2].tolist().index(max(data[2]))] == 1.0)
     succeed = test_result.count()
