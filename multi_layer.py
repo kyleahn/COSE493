@@ -50,12 +50,9 @@ def classify(node_num, X, syn):
     l[0] = X
     for i in range(0,len(node_num)-1):
         l[i+1] = nonlin(np.dot(l[i], syn[i]))
-#        print "l[",i,"] = ",l[i]
-#        print "syn[",i,"] = ",syn[i]
     return l[-1][0]
 
 if __name__ == "__main__":
-#    np.random.seed(1)
 
     #init spark
     conf = (SparkConf()
@@ -88,8 +85,8 @@ if __name__ == "__main__":
     train_data = data.map(lambda line: change(line))
 
     #first = 3, last = 6
-    node_num = [63,500,6]
-    num_of_train = 50
+    node_num = [63,6]
+    num_of_train = 100
     batch_size = 3000
 
     syn = []
@@ -98,9 +95,6 @@ if __name__ == "__main__":
         syn.append(np.random.random((node_num[i], node_num[i+1]))*0.2-0.1)
 
     train_data = train_data.zipWithIndex()
-    print train_data.first()
-    train_data = train_data.repartition(24)
-#    print train_data.collect()
 
     #split test and train data
     test_ratio = 10.0
@@ -109,6 +103,7 @@ if __name__ == "__main__":
     test_data = train_data.filter(lambda (data,index): index%int((100/test_ratio)) == 0)
     train_data = train_data.filter(lambda (data,index):  index%int((100/test_ratio)) != 0)
 
+    accurancy = [0.0]
     print "Start training >>"
     print "node_num = "+str(node_num)+", num_of_train = "+str(num_of_train)+", batch_size = "+str(batch_size)
     for loop in range(0,num_of_train):
@@ -125,29 +120,31 @@ if __name__ == "__main__":
         error = rdd.map(lambda x: x[-1]).mean()
 
         #alpha if learning rate
-        alpha = 0.05
+        alpha = 0.01
         for i in range(0,len(node_num)-1):
             syn[i] += alpha * delta[i]
 
-        print error
+        num_of_test = test_data.count()
 
-    num_of_test = test_data.count()
+        print "Start testing >>"
+        print "num_of_test = " + str(num_of_test)
 
-    print "Start testing >>"
-    print "num_of_test = "+str(num_of_test)
+        test_data_rdd = test_data.map(lambda (data, index): (data[0], data[1], classify(node_num, np.expand_dims(data[0], axis=0), syn)))
 
-    test_data = test_data.map(lambda (data, index): (data[0], data[1], classify(node_num, np.expand_dims(data[0],axis=0), syn)))
+        test_result = test_data_rdd.filter(lambda data: data[1][data[2].tolist().index(max(data[2]))] == 1.0)
+        succeed = test_result.count()
 
-    test_result = test_data.filter(lambda data: data[1][data[2].tolist().index(max(data[2]))] == 1.0)
-    succeed = test_result.count()
+#        print "correct : ", succeed
+#        print "wrong : ", (num_of_test - succeed)
+        print "accurancy : ", succeed * 100.0 / num_of_test, "%"
 
-#    print "test"
-#    for i in range(11):
-#        print "[", i / 10.0 * normalization_factor, ",", i / 10.0 * normalization_factor, ",", i / 10.0 * normalization_factor, "] -> ", classify(
-#            node_num, np.expand_dims(
-#                [i / 10.0 * normalization_factor, i / 10.0 * normalization_factor, i / 10.0 * normalization_factor],
-#                axis=0), syn)
+        accurancy.append(succeed * 100.0 / num_of_test)
 
-    print "correct : ",succeed
-    print "wrong : ", (num_of_test - succeed)
-    print "accurancy : ", succeed*100.0/num_of_test,"%"
+    import matplotlib.pyplot as plt
+    plt.title('change in accurancy at node='+str(node_num))
+  #  plt.axes([1,num_of_train,0.0,100.0])
+    plt.plot(accurancy)
+    plt.xlabel('loop')
+    plt.ylabel('accurancy')
+    plt.show()
+
