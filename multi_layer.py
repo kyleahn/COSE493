@@ -8,7 +8,8 @@ from pyspark import SparkConf, SparkContext
 def nonlin(x, deriv=False):
     if (deriv == True):
         return x * (1 - x)
-    return 1 / (1 + np.exp(-x))
+    sigmoid = np.clip(x, -500, 500)
+    return 1 / (1 + np.exp(-sigmoid))
 
 def train(node_num, X, y, syn):
     l = [[] for _ in range(len(node_num))]
@@ -44,7 +45,8 @@ def classify(node_num, X, syn):
     def nonlin(x, deriv=False):
         if (deriv == True):
             return x * (1 - x)
-        return 1 / (1 + np.exp(-x))
+        sigmoid = np.clip(x, -500, 500)
+        return 1 / (1 + np.exp(-sigmoid))
 
     l = [[] for _ in range(len(node_num))]
     l[0] = X
@@ -57,8 +59,8 @@ if __name__ == "__main__":
     #init spark
     conf = (SparkConf()
             .setAppName("SPARK_ANN")
-            .setMaster("spark://192.168.0.3:7077"))
-    #        .setMaster("local[*]"))
+    #        .setMaster("spark://192.168.0.3:7077"))
+            .setMaster("local[*]"))
     sc = SparkContext(conf=conf)
 
     #load from file
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     elif platform.system() == 'Windows':
         path = 'C:\Users\KUsch\Downloads\WISDM_at_v2.0\WISDM_at_v2.0_raw.txt'
     else:
-        path = '/Users/Abj/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw.txt'
+        path = '/Users/Abj/Downloads/WISDM_ar_v1.1/WISDM_spectrum_40_overlap_20_train.csv'
 
     print "<<Preprocessing>>"
     csv = sc.textFile(path,24)
@@ -87,7 +89,7 @@ if __name__ == "__main__":
     #first = 3, last = 6
     node_num = [63,6]
     num_of_train = 100
-    batch_size = 3000
+    batch_num = 3000
 
     syn = []
     for i in range(0,len(node_num)-1):
@@ -105,10 +107,10 @@ if __name__ == "__main__":
 
     accurancy = [0.0]
     print "Start training >>"
-    print "node_num = "+str(node_num)+", num_of_train = "+str(num_of_train)+", batch_size = "+str(batch_size)
+    print "node_num = "+str(node_num)+", num_of_train = "+str(num_of_train)+", batch_num = "+str(batch_num)
     for loop in range(0,num_of_train):
         print "train loop = ", loop+1
-        train_batch = train_data.filter(lambda (data,index): index%batch_size == loop%batch_size)
+        train_batch = train_data.filter(lambda (data,index): index%batch_num == loop%batch_num)
 
         rdd = train_batch.map(lambda (data,index): train(node_num,\
                                                np.expand_dims(data[0],axis=0),\
@@ -140,9 +142,11 @@ if __name__ == "__main__":
 
         accurancy.append(succeed * 100.0 / num_of_test)
 
+    for i in accurancy:
+        print i
     import matplotlib.pyplot as plt
     plt.title('change in accurancy at node='+str(node_num))
-  #  plt.axes([1,num_of_train,0.0,100.0])
+    #plt.axes([1,num_of_train,0.0,100.0])
     plt.plot(accurancy)
     plt.xlabel('loop')
     plt.ylabel('accurancy')
