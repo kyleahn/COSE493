@@ -87,9 +87,9 @@ if __name__ == "__main__":
     train_data = data.map(lambda line: change(line))
 
     #first = 3, last = 6
-    node_num = [63,6]
-    num_of_train = 100
-    batch_num = 3000
+    node_num = [63,500,6]
+    num_of_train = 50
+    batch_num = 1
 
     syn = []
     for i in range(0,len(node_num)-1):
@@ -109,46 +109,48 @@ if __name__ == "__main__":
     print "Start training >>"
     print "node_num = "+str(node_num)+", num_of_train = "+str(num_of_train)+", batch_num = "+str(batch_num)
     for loop in range(0,num_of_train):
-        print "train loop = ", loop+1
-        train_batch = train_data.filter(lambda (data,index): index%batch_num == loop%batch_num)
+        try:
+            print "train loop = ", loop+1
+            train_batch = train_data.filter(lambda (data,index): index%batch_num == loop%batch_num)
 
-        rdd = train_batch.map(lambda (data,index): train(node_num,\
-                                               np.expand_dims(data[0],axis=0),\
-                                               np.expand_dims(data[1],axis=0),\
-                                               syn))
-        delta = [0 for _ in range(len(node_num))]
-        for i in range(0,len(node_num)-1):
-            delta[i] = rdd.map(lambda x: x[i]).mean()
-        error = rdd.map(lambda x: x[-1]).mean()
+            rdd = train_batch.map(lambda (data,index): train(node_num,\
+                                                   np.expand_dims(data[0],axis=0),\
+                                                   np.expand_dims(data[1],axis=0),\
+                                                   syn))
+            delta = [0 for _ in range(len(node_num))]
+            for i in range(0,len(node_num)-1):
+                delta[i] = rdd.map(lambda x: x[i]).mean()
+            error = rdd.map(lambda x: x[-1]).mean()
 
-        #alpha if learning rate
-        alpha = 0.01
-        for i in range(0,len(node_num)-1):
-            syn[i] += alpha * delta[i]
+            #alpha if learning rate
+            alpha = 0.01
+            for i in range(0,len(node_num)-1):
+                syn[i] += alpha * delta[i]
 
-        num_of_test = test_data.count()
+            num_of_test = test_data.count()
 
-        print "Start testing >>"
-        print "num_of_test = " + str(num_of_test)
+            print "Start testing >>"
+            print "num_of_test = " + str(num_of_test)
 
-        test_data_rdd = test_data.map(lambda (data, index): (data[0], data[1], classify(node_num, np.expand_dims(data[0], axis=0), syn)))
+            test_data_rdd = test_data.map(lambda (data, index): (data[0], data[1], classify(node_num, np.expand_dims(data[0], axis=0), syn)))
 
-        test_result = test_data_rdd.filter(lambda data: data[1][data[2].tolist().index(max(data[2]))] == 1.0)
-        succeed = test_result.count()
+            test_result = test_data_rdd.filter(lambda data: data[1][data[2].tolist().index(max(data[2]))] == 1.0)
+            succeed = test_result.count()
 
-#        print "correct : ", succeed
-#        print "wrong : ", (num_of_test - succeed)
-        print "accurancy : ", succeed * 100.0 / num_of_test, "%"
+    #        print "correct : ", succeed
+    #        print "wrong : ", (num_of_test - succeed)
+            print "accurancy : ", succeed * 100.0 / num_of_test, "%"
 
-        accurancy.append(succeed * 100.0 / num_of_test)
+            accurancy.append(succeed * 100.0 / num_of_test)
+        except:
+            break
 
     for i in accurancy:
         print i
-    import matplotlib.pyplot as plt
-    plt.title('change in accurancy at node='+str(node_num))
-    #plt.axes([1,num_of_train,0.0,100.0])
-    plt.plot(accurancy)
-    plt.xlabel('loop')
-    plt.ylabel('accurancy')
-    plt.show()
-
+#    import matplotlib.pyplot as plt
+#    plt.title('change in accurancy at node='+str(node_num))
+#    plt.axes([1,num_of_train,0.0,100.0])
+#    plt.plot(accurancy)
+#    plt.xlabel('loop')
+#    plt.ylabel('accurancy')
+#    plt.show()
