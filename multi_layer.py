@@ -59,13 +59,13 @@ if __name__ == "__main__":
     #init spark
     conf = (SparkConf()
             .setAppName("SPARK_ANN")
-    #        .setMaster("spark://192.168.0.3:7077"))
-            .setMaster("local[*]"))
+            .setMaster("spark://192.168.0.3:7077"))
+    #        .setMaster("local[*]"))
     sc = SparkContext(conf=conf)
 
     #load from file
     if platform.system() == 'Linux':
-        path = '/home/master/Downloads/WISDM_ar_v1.1/WISDM_spectrum_40_overlap_20_train.csv'
+        path = '/home/master/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw_fold100.txt'
     elif platform.system() == 'Windows':
         path = 'C:\Users\KUsch\Downloads\WISDM_at_v2.0\WISDM_at_v2.0_raw.txt'
     else:
@@ -73,8 +73,10 @@ if __name__ == "__main__":
 
     print "<<Preprocessing>>"
     csv = sc.textFile(path,24)
+    #unzip folded data
+#    csv = csv.flatMap(lambda line: line.split(';'))
     #filter weird data
-    data = csv.map(lambda line: (line.split(",")))
+    data = csv.map(lambda line: (line.split(","))).filter(lambda line: len(line) == 64)
     #form change to (X,Y,Z), result
     def change(line):
         for i in range(63):
@@ -86,9 +88,10 @@ if __name__ == "__main__":
         return (tuple(temp_list), temp)
     train_data = data.map(lambda line: change(line))
 
+    print train_data.count()
     #first = 3, last = 6
     node_num = [63,500,6]
-    num_of_train = 50
+    num_of_train = 500
     batch_num = 1
 
     syn = []
@@ -123,7 +126,7 @@ if __name__ == "__main__":
             error = rdd.map(lambda x: x[-1]).mean()
 
             #alpha if learning rate
-            alpha = 0.01
+            alpha = 0.05
             for i in range(0,len(node_num)-1):
                 syn[i] += alpha * delta[i]
 
