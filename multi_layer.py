@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     #load from file
     if platform.system() == 'Linux':
-        path = '/home/master/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw.txt'
+        path = '/home/master/Downloads/WISDM_at_v2.0/WISDM_at_v2.0_raw_fold1000000.txt'
     elif platform.system() == 'Windows':
         path = 'C:\Users\KUsch\Downloads\WISDM_at_v2.0\WISDM_at_v2.0_raw.txt'
     else:
@@ -75,8 +75,8 @@ if __name__ == "__main__":
     print "<<Preprocessing>>"
     csv = sc.textFile(path,24)
     #filter weird data
-    data = csv.filter(lambda line: line[-1]==';')\
-        .map(lambda line: (line.split(",")))\
+    csv = csv.flatMap(lambda line: line.split(';'))
+    data = csv.map(lambda line: (line.split(",")))\
         .filter(lambda line: len(line)==6)
     #replace exercise name to num
     def replace(line):
@@ -107,10 +107,10 @@ if __name__ == "__main__":
         temp_train_data = temp_train_data.union(temp_rdd)
 
     train_data = temp_train_data
-    print train_data.first()
+  #  print train_data.first()
     #shuffle rdd
     train_data = train_data.repartition(24)
-    print train_data.first()
+ #   print train_data.first()
 
 
     #normalization to 0~1
@@ -134,9 +134,9 @@ if __name__ == "__main__":
 
 
     #first = 3, last = 6
-    node_num = [3,500,500,6]
+    node_num = [3,500,6]
     num_of_train = 10
-    batch_size = 1
+    batch_size = 3000
 
     syn = []
     for i in range(0,len(node_num)-1):
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         syn.append(np.random.random((node_num[i], node_num[i+1]))*0.2-0.1)
 
     train_data = train_data.zipWithIndex()
-    print train_data.first()
+   # print train_data.first()
     train_data = train_data.repartition(24)
 #    print train_data.collect()
 
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     print "num_of_test = "+str(num_of_test)
 
     test_data = test_data.map(lambda (data, index): (data[0], data[1], classify(node_num, np.expand_dims(data[0],axis=0), syn)))
-    print test_data.map(lambda data: (data[0], data[1], data[2])).collect()
+  #  print test_data.map(lambda data: (data[0], data[1], data[2])).collect()
 
     test_result = test_data.filter(lambda data: data[1][data[2].tolist().index(max(data[2]))] == 1.0)
     succeed = test_result.count()
